@@ -1,0 +1,20 @@
+install.packages(
+  c(
+    "tidyverse",
+    "survival",
+    "glm",
+    "glmnet",
+    "haven",
+    "foreach",
+    "ggfortify",
+    "nlme",
+    "parallel",
+    "KMsurv",
+    "km.ci",
+    "Hmisc",
+    "rms",
+    "kableExtra",
+    "mice",
+    "survminer"
+  )
+)

@@ -1,0 +1,72 @@
+FROM jupyter/datascience-notebook:latest as base
+
+RUN pip install --no-cache-dir \
+    ipython \
+    ipython-sql \
+    jupyterlab
+
+FROM base as base-r
+# Install R
+RUN Rscript -e "install.packages(c('Hmisc',\
+     'reticulate', \
+     'rms', \
+     'survminer', \
+     'ggfortify', \
+     'gridExtra', \
+     'kableExtra', \
+     'languageserver'), \
+     repos = 'http://cran.us.r-project.org')"\
+      --no-save && \
+    rm -rf /tmp/R*
+
+FROM base-r as test-r
+RUN Rscript -e "library(Hmisc);library(tidyverse);library(reticulate)"
+
+FROM base-r as base-r-python
+
+RUN pip install --no-cacahe-dir \
+    tensorflow-cpu
+
+FROM base-r-python as test-r-python
+RUN ipython -c "import tensorflow as tf; print(tf.__version__);import pandas as pd"
+RUN ipython -c "%load_ext rpy2.ipython"
+
+
+FROM base-r-python as app
+COM /bin/bash
+
+## make above code into singularity recipe
+
+Bootstrap: docker
+From: jupyter/datascience-notebook:latest
+
+
+
+%post
+    pip install --no-cache-dir \
+    ipython \
+    ipython-sql \
+    jupyterlab
+
+    Rscript -e "install.packages(c('Hmisc',\
+     'reticulate', \
+     'rms', \
+     'survminer', \
+     'ggfortify', \
+     'gridExtra', \
+     'kableExtra', \
+     'languageserver'), \
+     repos = 'http://cran.us.r-project.org')"\
+      --no-save && \
+    rm -rf /tmp/R*
+
+    pip install --no-cacahe-dir \
+    tensorflow-cpu
+
+%runscript
+    /bin/bash
+
+%test
+    Rscript -e "library(Hmisc);library(tidyverse);library(reticulate)"
+    ipython -c "import tensorflow as tf; print(tf.__version__);import pandas as pd"
+    ipython -c "%load_ext rpy2.ipython"
