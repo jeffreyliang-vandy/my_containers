@@ -1,13 +1,6 @@
 FROM jupyter/datascience-notebook:latest as base
 
 USER root
-WORKDIR /home/jovyan
-
-RUN curl -LO https://quarto.org/download/latest/quarto-linux-amd64.deb && \
-    apt-get update && \
-    apt-get install -y gdebi-core && \
-    gdebi quarto-linux-amd64.deb && \
-    rm quarto-linux-amd64.deb
 
 RUN pip install --no-cache-dir \
     ipython \
@@ -20,6 +13,15 @@ RUN pip install --no-cache-dir \
 
 RUN echo 'c.NotebookApp.contents_manager_class = "jupytext.TextFileContentsManager"' >> .jupyter/jupyter_notebook_config.py &&\
     wget https://raw.githubusercontent.com/mwouts/jupytext/main/binder/labconfig/default_setting_overrides.json -P  ~/.jupyter/labconfig/
+
+RUN wget https://github.com/quarto-dev/quarto-cli/releases/download/v1.2.475/quarto-1.2.475-linux-amd64.tar.gz &&\
+    tar -C /opt -xvzf quarto-1.2.475-linux-amd64.tar.gz && \
+    ln -s /opt/quarto-1.2.475/bin/quarto /bin/quarto && \
+    rm quarto-1.2.475-linux-amd64.tar.gz
+
+
+FROM base as test-base
+RUN  quarto check
 
 
 FROM base as base-r
@@ -68,7 +70,6 @@ RUN ipython -c "%load_ext rpy2.ipython"
 
 
 FROM base-r-python as app
-## add user named app
-RUN useradd -m -s /bin/bash app
-USER app
+USER 1000
+WORKDIR /home/jovyan
 CMD /bin/bash
