@@ -39,7 +39,7 @@ RUN pip install --no-cache-dir \
 RUN echo 'options(repos = c(REPO_NAME = "https://packagemanager.rstudio.com/cran/__linux__/jammy/latest"))' >> /opt/conda/lib/R/etc/Rprofile.site && \
     /opt/conda/bin/Rscript -e 'remotes::install_github("Enchufa2/rspm")' && \
     echo 'rspm::disable()' >> /opt/conda/lib/R/etc/Rprofile.site && \
-    /opt/conda/bin/Rscript -e 'rspm::enable();rspm::install_sysreqs()'   
+    /opt/conda/bin/Rscript -e 'rspm::enable();rspm::install_sysreqs()' 
 
 RUN /opt/conda/bin/Rscript -e "IRkernel::installspec(user=F)" --no-save
 
@@ -47,20 +47,23 @@ RUN echo 'c.NotebookApp.contents_manager_class = "jupytext.TextFileContentsManag
     wget https://raw.githubusercontent.com/mwouts/jupytext/main/binder/labconfig/default_setting_overrides.json -P  ~/.jupyter/labconfig/
 
 
-RUN wget https://github.com/quarto-dev/quarto-cli/releases/download/v1.3.336/quarto-1.3.336-linux-amd64.deb && \
-    apt-get install -y ./quarto*.deb && \
-    rm quarto*.deb
+# RUN wget https://github.com/quarto-dev/quarto-cli/releases/download/v1.3.336/quarto-1.3.336-linux-amd64.deb && \
+#     apt-get install -y ./quarto*.deb && \
+#     rm quarto*.deb
 
-RUN wget https://download2.rstudio.org/server/jammy/amd64/rstudio-server-2023.03.0-386-amd64.deb &&\
-    apt-get install -y ./rstudio-server-2023.03.0-386-amd64.deb && \
-    apt-get update && \
-    apt-get install -y \
-    lib32gcc-s1 lib32stdc++6 libc6-i386 libclang-14-dev \
-    libclang-common-14-dev libclang-dev libclang1-14 libgc1 \
-    libllvm14 libobjc-11-dev libobjc4 libpq5 libssl-dev psmisc sudo &&\
-    rm rstudio*.deb && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# RUN wget https://download2.rstudio.org/server/jammy/amd64/rstudio-server-2023.03.0-386-amd64.deb &&\
+#     apt-get install -y ./rstudio-server-2023.03.0-386-amd64.deb && \
+#     apt-get update && \
+#     apt-get install -y \
+#     lib32gcc-s1 lib32stdc++6 libc6-i386 libclang-14-dev \
+#     libclang-common-14-dev libclang-dev libclang1-14 libgc1 \
+#     libllvm14 libobjc-11-dev libobjc4 libpq5 libssl-dev psmisc sudo &&\
+#     rm rstudio*.deb && \
+#     apt-get clean && \
+#     rm -rf /var/lib/apt/lists/*
+
+RUN mamba install -c conda-forge -y quarto && \
+    mamba install -c r -y rstudio
 
 ENV RSTUDIO_WHICH_R=/opt/conda/bin/R
 
@@ -106,6 +109,7 @@ RUN /opt/conda/bin/Rscript -e "rspm::enable(); \
     Rscript -e 'library(Hmisc)' --no-save && \
     rm -rf /tmp/R*
 
+ENV RETICULATE_PYTHON=/opt/conda/bin/python
 
 RUN mamba install -y \
     r-tidyverse \
@@ -145,24 +149,12 @@ RUN ipython -c "import tensorflow as tf; print(tf.__version__);\
     import autoviz;"
 RUN ipython -c "%load_ext rpy2.ipython"
 
-FROM base-r-python as base-r-python-mne
-RUN mamba install -c conda-forge -y \
-    mne \
-    mat73 \
-     && mamba clean -afy
-
-RUN  ipython -c "import mne"
-
-FROM base-r-python as app
+FROM base-r-python as app-base
 RUN chown app:app -R /home/liang
 # RUN chown app:app -R /opt/conda
 USER app
 WORKDIR /home/liang
-CMD /bin/bash
+EXPOSE 8888
+CMD jupyterlab --ip=0.0.0.0 --port=8888 --no-browser
 
-FROM base-r-python-mne as app-mne
-RUN chown app:app -R /home/liang
-# RUN chown app:app -R /opt/conda
-USER app
-WORKDIR /home/liang
-CMD /bin/bash
+
