@@ -79,7 +79,7 @@ CMD /bin/bash
 
 FROM base as base-r
 
-RUN apt-get update && 
+RUN apt-get update && \
     apt-get install -y zlib1g-dev libicu-dev make && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
