@@ -1,7 +1,9 @@
 FROM ubuntu:22.04 as base
 
 WORKDIR /home/liang
-RUN addgroup --system app && adduser --system --ingroup app app
+RUN addgroup --system --gid 1001 app \
+    && adduser --system --ingroup app --uid 1001 app \
+    && echo "app:password" | chpasswd
 ENV HOME=/home/liang
 ENV TZ="America/New_York"
 ENV DEBIAN_FRONTEND=noninteractive
@@ -16,11 +18,11 @@ RUN apt-get update &&\
     libstdc++6 git
 
 RUN wget "https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-$(uname)-$(uname -m).sh"  -O miniconda.sh && \
-    bash miniconda.sh -b -p /opt/conda -f && \
+    bash miniconda.sh -b -p /home/liang/conda -f && \
     rm miniconda.sh
     
-ENV PATH=/opt/conda/bin:$PATH
-ARG PATH=/opt/conda/bin:$PATH
+ENV PATH=/home/liang/conda/bin:$PATH
+ARG PATH=/home/liang/conda/bin:$PATH
 
 RUN conda config --append channels r && \
     #conda config --append channels anaconda && \
@@ -32,18 +34,17 @@ RUN conda config --append channels r && \
 RUN mamba install -c conda-forge -y \
     jupytext \
     jupyter-rsession-proxy && \
-    jupyter nbextension install --py jupytext --user && \
-    jupyter nbextension enable --py jupytext --user && \
-    jupyter serverextension enable jupytext --user 
+    jupyter labextension enable jupyterlab-jupytext && \
+    jupyter serverextension enable jupytext
 
-RUN echo 'options(repos = c(REPO_NAME = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"))' >> /opt/conda/lib/R/etc/Rprofile.site && \
-    /opt/conda/bin/Rscript -e 'remotes::install_github("Enchufa2/rspm")' && \
-    /opt/conda/bin/Rscript -e 'rspm::enable();rspm::install_sysreqs()' 
+RUN echo 'options(repos = c(REPO_NAME = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"))' >> /home/liang/conda/lib/R/etc/Rprofile.site && \
+    /home/liang/conda/bin/Rscript -e 'remotes::install_github("Enchufa2/rspm")' && \
+    /home/liang/conda/bin/Rscript -e 'rspm::enable();rspm::install_sysreqs()' 
 
-RUN /opt/conda/bin/Rscript -e "IRkernel::installspec(user=F)" --no-save
+RUN /home/liang/conda/bin/Rscript -e "IRkernel::installspec(user=F)" --no-save
 
-RUN echo 'c.NotebookApp.contents_manager_class = "jupytext.TextFileContentsManager"' >> ~/.jupyter/jupyter_notebook_config.py &&\
-    wget https://raw.githubusercontent.com/mwouts/jupytext/main/binder/labconfig/default_setting_overrides.json -P  ~/.jupyter/labconfig/
+RUN echo 'c.NotebookApp.contents_manager_class = "jupytext.TextFileContentsManager"' >> /home/liang/.jupyter/jupyter_notebook_config.py &&\
+    wget "https://raw.githubusercontent.com/mwouts/jupytext/main/binder/labconfig/default_setting_overrides.json" -P  /home/liang/.jupyter/labconfig/
 
 
 RUN wget "https://github.com/quarto-dev/quarto-cli/releases/download/v1.3.336/quarto-1.3.336-linux-amd64.deb" && \
@@ -61,11 +62,13 @@ RUN wget https://download2.rstudio.org/server/jammy/amd64/rstudio-server-2023.03
     libllvm14 libobjc-11-dev libobjc4 libpq5 libssl-dev psmisc sudo &&\
     rm rstudio*.deb
 
-ENV RSTUDIO_WHICH_R=/opt/conda/bin/R
+RUN echo "auth-required-user-group=root,app" >> /etc/rstudio/rserver.conf
+
+ENV RSTUDIO_WHICH_R=/home/liang/conda/bin/R
 
 FROM base as test-base
 RUN chown app:app -R /home/liang
-#RUN chown app:app -R /opt/conda
+#RUN chown app:app -R /home/liang/conda
 RUN rstudio-server stop && rstudio-server verify-installation
 USER app
 RUN  mamba list
@@ -88,7 +91,7 @@ RUN mamba install -y \
     r-ranger
 
 # install from RSPM
-RUN /opt/conda/bin/Rscript -e "rspm::enable(); \
+RUN /home/liang/conda/bin/Rscript -e "rspm::enable(); \
     install.packages(c(\
      'Hmisc',\
      'BiocManager', \
@@ -111,11 +114,10 @@ RUN /opt/conda/bin/Rscript -e "rspm::enable(); \
     )" --no-save && \
     rm -rf /tmp/*
 
-ENV RETICULATE_PYTHON=/opt/conda/bin/python
+ENV RETICULATE_PYTHON=/home/liang/conda/bin/python
 
 FROM base-r as test-r
 RUN chown app:app -R /home/liang
-RUN chown app:app -R /opt/conda
 USER app
 RUN Rscript -e "library(Hmisc);library(tidyverse);library(reticulate);library(caret);library(ranger)"
 
@@ -144,12 +146,18 @@ RUN ipython -c "import tensorflow as tf; print(tf.__version__);\
     import autoviz;"
 RUN ipython -c "%load_ext rpy2.ipython"
 
-FROM base-r-python as app-base
+FROM base-r-python as dev
+USER root
+WORKDIR /home/liang
+EXPOSE 8080
+EXPOSE 8787
+CMD jupyter lab --ip=0.0.0.0 --port=8080 --no-browser --allow-root
+
+FROM base-r-python as app
 RUN chown app:app -R /home/liang
 RUN apt-get clean && \
     rm -rf /var/lib/apt/lists/* &&\
     mamba clean -atfy
-# RUN chown app:app -R /opt/conda
 USER app
 WORKDIR /home/liang
 EXPOSE 8080

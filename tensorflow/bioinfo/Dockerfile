@@ -1,4 +1,4 @@
-FROM jeffreyliang1995/tensorflow:latest as base
+FROM jeffreyliang1995/tensorflow:dev as base
 
 USER root
 
@@ -21,8 +21,19 @@ RUN Rscript /home/liang/r-packages.R --no-save && \
 FROM base-bioinfo as test-bioinfo
 RUN  Rscript -e "library(Seurat);library(RGCCA);library(omicade4);library(MOFA2);library(MSFA)" --no-save
 
-FROM base-bioinfo as app-bioinfo
-RUN chown app:app -R /home/liang
+FROM base-bioinfo as dev
+USER root
+WORKDIR /home/liang
+EXPOSE 8080
+EXPOSE 8787
+CMD jupyter lab --ip=0.0.0.0 --port=8080 --no-browser --allow-root
+
+FROM base-bioinfo as app
+RUN chown app:app -R /home/liang && \
+    chown app:app -R /opt/conda
+RUN apt-get clean && \
+    rm -rf /var/lib/apt/lists/* &&\
+    mamba clean -atfy
 USER app
 WORKDIR /home/liang
 EXPOSE 8080
