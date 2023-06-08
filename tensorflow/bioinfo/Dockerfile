@@ -60,7 +60,7 @@ RUN apt-get clean && \
     mamba clean -atfy && \
     rm -rf /tmp/* && \
     rm -rf /home/$USERNAME/.cache
-# RUN chown app:$USERNAME -R /home/$USERNAME
+RUN chown $USERNAME -R /home/$USERNAME
 WORKDIR /home/$USERNAME
 USER $USERNAME
 EXPOSE 8080 8787 8888
