@@ -159,6 +159,11 @@ ENV RSTUDIO_WHICH_R=/home/liang/conda/bin/R
 RUN mamba install -c conda-forge -y \
     code-server \
     && mamba clean -atfy
+RUN code-server --install-extension ms-python.python && \
+    code-server --install-extension ms-toolsai.jupyter && \
+    code-server --install-extension REditorSupport.r && \
+    code-server --install-extension Github.copilotvs && \
+    code-server --install-extension quarto.quarto
 ENV SHELL /bin/bash
 
 FROM visual-r-python as test-visual
@@ -175,6 +180,11 @@ CMD ["/usr/bin/supervisord"]
 FROM visual-r-python as dev
 USER root
 WORKDIR /home/liang
+RUN apt-get clean && \
+    rm -rf /var/lib/apt/lists/* &&\
+    mamba clean -atfy && \
+    rm -rf /tmp/* && \
+    rm -rf /home/liang/.cache
 COPY ./supervisord_test.conf /etc/supervisor/conf.d/supervisord.conf
 EXPOSE 8080 8787 8888
 CMD ["/usr/bin/supervisord"]
@@ -186,10 +196,9 @@ RUN apt-get clean && \
     rm -rf /tmp/* && \
     rm -rf /home/liang/.cache
 RUN chown app:app -R /home/liang
-USER app
 WORKDIR /home/liang
 COPY ./supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 EXPOSE 8080 8787 8888
-CMD ["/usr/bin/supervisord"]
+CMD ["/home/liang/conda/bin/code-server", "--auth", "none", "--bind-addr", "0.0.0.0:8080"]
 
 
