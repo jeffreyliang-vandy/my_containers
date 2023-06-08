@@ -1,6 +1,6 @@
 FROM ubuntu:22.04 as base
 
-ENV USERNAME=liangz2
+ENV USERNAME=liang
 RUN addgroup --system --gid 1001 app \
     && adduser --system --ingroup app --uid 1001 $USERNAME \
     && echo "$USERNAME:password" | chpasswd
@@ -65,9 +65,12 @@ RUN mamba install -c conda-forge -y \
     r-essentials \
     r-biocmanager \
     r-reticulate \
+    r-hmisc \
     r-rms \
     r-mice \
     r-geepack \
+    r-arsenal \
+    r-patchwork \
     r-janitor \
     r-caret \
     r-zoo \
@@ -82,7 +85,6 @@ RUN mamba install -c conda-forge -y \
 # install from RSPM
 RUN /home/$USERNAME/conda/bin/Rscript -e "rspm::enable(); \
     install.packages(c(\
-     'Hmisc',\
      'survminer', \
      'languageserver'\
      )\
@@ -95,7 +97,7 @@ ENV RETICULATE_PYTHON=/home/$USERNAME/conda/bin/python
 FROM base-r as test-r
 RUN which jupyter && jupyter-lab --version
 RUN which python && python --version
-RUN Rscript -e "library(Hmisc);library(tidyverse);library(reticulate);library(caret);library(ranger)"
+RUN Rscript -e "library(Hmisc);library(tidyverse);library(reticulate);library(caret);library(ranger);library(rms);library(survminer)"
 
 FROM base-r as base-r-python
 

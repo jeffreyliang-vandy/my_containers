@@ -2,21 +2,23 @@ FROM jeffreyliang1995/tensorflow:core as base
 
 USER root
 
-COPY ./r-packages.R /home/liangz2/
+COPY ./r-packages.R /home/$USERNAME/
 
 FROM base as base-bioinfo
 RUN conda config --append channels bioconda && \
     echo 'options(BioC_mirror = "https://packagemanager.posit.co/bioconductor")' \
-    > /home/liangz2/conda/lib/R/etc/Rprofile.site && \
+    > /home/$USERNAME/conda/lib/R/etc/Rprofile.site && \
     echo 'options(repos = c(REPO_NAME = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"))' \
-    >> /home/liangz2/conda/lib/R/etc/Rprofile.site
+    >> /home/$USERNAME/conda/lib/R/etc/Rprofile.site
 
 RUN mamba install -y \
     r-seurat \
     r-nmf \
-    bioconductor-iclusterplus 
+    bioconductor-iclusterplus \
+    bioconductor-omicade4 \
+    bioconductor-mofa2 
 RUN mamba clean -atfy && \
-    Rscript /home/liangz2/r-packages.R --no-save \
+    Rscript /home/$USERNAME/r-packages.R --no-save \
     && rm -rf /tmp/*
 
 FROM base-bioinfo as test-bioinfo

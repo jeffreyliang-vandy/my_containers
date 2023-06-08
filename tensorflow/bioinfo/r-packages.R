@@ -8,10 +8,10 @@ install.packages(c(
 
 ))
 
-BiocManager::install(c(
-    "omicade4"
-    ,"MOFA2"
-))
+# BiocManager::install(c(
+#     "omicade4"
+#     ,"MOFA2"
+# ))
 
 remotes::install_github("rdevito/MSFA")
 
