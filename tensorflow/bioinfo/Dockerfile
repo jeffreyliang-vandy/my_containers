@@ -1,40 +1,67 @@
-FROM jeffreyliang1995/tensorflow:dev as base
+FROM jeffreyliang1995/tensorflow:core as base
 
 USER root
 
-COPY ./r-packages.R /home/liang/
+COPY ./r-packages.R /home/liangz2/
 
 FROM base as base-bioinfo
 RUN conda config --append channels bioconda && \
     echo 'options(BioC_mirror = "https://packagemanager.posit.co/bioconductor")' \
-    > /home/liang/conda/lib/R/etc/Rprofile.site && \
+    > /home/liangz2/conda/lib/R/etc/Rprofile.site && \
     echo 'options(repos = c(REPO_NAME = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"))' \
-    >> /home/liang/conda/lib/R/etc/Rprofile.site
+    >> /home/liangz2/conda/lib/R/etc/Rprofile.site
 
 RUN mamba install -y \
     r-seurat \
     r-nmf \
-    && mamba clean -atfy && \
-    Rscript /home/liang/r-packages.R --no-save \
+    bioconductor-iclusterplus 
+RUN mamba clean -atfy && \
+    Rscript /home/liangz2/r-packages.R --no-save \
     && rm -rf /tmp/*
 
 FROM base-bioinfo as test-bioinfo
-RUN  Rscript -e "library(Seurat);library(RGCCA);library(omicade4);library(MOFA2);library(MSFA)" --no-save
+RUN  Rscript -e "library(Seurat);library(RGCCA);library(omicade4);library(MOFA2);library(MSFA);library(iclusterplus)" --no-save
 
-FROM base-bioinfo as dev
-USER root
-WORKDIR /home/liang
+FROM base-bioinfo as core
+WORKDIR /home/$USERNAME
+EXPOSE 8888
+CMD ["jupyter-lab","--ip=0.0.0.0","--port=8888","--no-browser","--allow-root","--NotebookApp.token=''", "--NotebookApp.password=''"]
+
+
+FROM core as visual
+## Install jupyterlab
+RUN /bin/bash /home/$USERNAME/install_visual.sh
+
+FROM visual as test-visual
+WORKDIR /home/$USERNAME
+COPY ./supervisord_test.conf /etc/supervisor/conf.d/supervisord.conf
+RUN which jupyter && jupyter lab --version
+RUN which rstudio-server && rstudio-server verify-installation
+RUN which code-server && code-server --version
+RUN which quarto && quarto check
 EXPOSE 8080 8787 8888
 CMD ["/usr/bin/supervisord"]
 
-FROM base-bioinfo as app
+
+FROM visual as dev
+USER root
+WORKDIR /home/$USERNAME
 RUN apt-get clean && \
     rm -rf /var/lib/apt/lists/* &&\
     mamba clean -atfy && \
     rm -rf /tmp/* && \
-    rm -rf /home/liang/.cache
-RUN chown app:app -R /home/liang
-WORKDIR /home/liang
+    rm -rf /home/$USERNAME/.cache
+COPY ./supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 EXPOSE 8080 8787 8888
-CMD ["/home/liang/conda/bin/code-server", "--auth", "none", "--bind-addr", "0.0.0.0:8080"]
+CMD ["/usr/bin/supervisord"]
 
+FROM visual as app
+RUN apt-get clean && \
+    mamba clean -atfy && \
+    rm -rf /tmp/* && \
+    rm -rf /home/$USERNAME/.cache
+# RUN chown app:$USERNAME -R /home/$USERNAME
+WORKDIR /home/$USERNAME
+USER $USERNAME
+EXPOSE 8080 8787 8888
+CMD ["jupyter-lab","--ip=0.0.0.0","--port=8888","--no-browser","--allow-root","--NotebookApp.token=''", "--NotebookApp.password=''"]

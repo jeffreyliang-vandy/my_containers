@@ -9,8 +9,7 @@ install.packages(c(
 ))
 
 BiocManager::install(c(
-    "iClusterPlus"
-    ,"omicade4"
+    "omicade4"
     ,"MOFA2"
 ))
 
