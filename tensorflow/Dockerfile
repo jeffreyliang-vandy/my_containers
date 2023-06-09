@@ -1,6 +1,6 @@
 FROM ubuntu:22.04 as base
 
-ENV USERNAME=liang
+ENV USERNAME=liangz2
 RUN addgroup --system --gid 1001 app \
     && adduser --system --ingroup app --uid 1001 $USERNAME \
     && echo "$USERNAME:password" | chpasswd
@@ -21,14 +21,13 @@ RUN apt-get update &&\
     && apt-get clean
 
 RUN wget "https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-$(uname)-$(uname -m).sh"  -O miniconda.sh && \
-    bash miniconda.sh -b -p /home/$USERNAME/conda -f && \
+    bash miniconda.sh -b -p /opt/conda -f && \
     rm miniconda.sh
     
-ENV PATH=/home/$USERNAME/conda/bin:$PATH
-ARG PATH=/home/$USERNAME/conda/bin:$PATH
+ENV PATH=/opt/conda/bin:$PATH
+ARG PATH=/opt/conda/bin:$PATH
 
 RUN conda config --append channels r && \
-    #conda config --append channels anaconda && \
     mamba install -c conda-forge -y \
     python=3.10 \
     r-base r-remotes r-units \
@@ -37,12 +36,12 @@ RUN conda config --append channels r && \
     && mamba clean -atfy
     
 
-RUN echo 'options(repos = c(REPO_NAME = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"))' >> /home/$USERNAME/conda/lib/R/etc/Rprofile.site && \
-    /home/$USERNAME/conda/bin/Rscript -e 'remotes::install_github("Enchufa2/rspm")' && \
-    /home/$USERNAME/conda/bin/Rscript -e 'rspm::enable();rspm::install_sysreqs()' && \
+RUN echo 'options(repos = c(REPO_NAME = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"))' >> /opt/conda/lib/R/etc/Rprofile.site && \
+    /opt/conda/bin/Rscript -e 'remotes::install_github("Enchufa2/rspm")' && \
+    /opt/conda/bin/Rscript -e 'rspm::enable();rspm::install_sysreqs()' && \
     rm -rf /tmp/*
 
-RUN /home/$USERNAME/conda/bin/Rscript -e "IRkernel::installspec(user=F)" --no-save && \
+RUN /opt/conda/bin/Rscript -e "IRkernel::installspec(user=F)" --no-save && \
     rm -rf /tmp/*
 
 FROM base as test-base
@@ -83,7 +82,7 @@ RUN mamba install -c conda-forge -y \
     && mamba clean -atfy
 
 # install from RSPM
-RUN /home/$USERNAME/conda/bin/Rscript -e "rspm::enable(); \
+RUN /opt/conda/bin/Rscript -e "rspm::enable(); \
     install.packages(c(\
      'survminer', \
      'languageserver'\
@@ -92,7 +91,7 @@ RUN /home/$USERNAME/conda/bin/Rscript -e "rspm::enable(); \
     )" --no-save && \
     rm -rf /tmp/*
 
-ENV RETICULATE_PYTHON=/home/$USERNAME/conda/bin/python
+ENV RETICULATE_PYTHON=/opt/conda/bin/python
 
 FROM base-r as test-r
 RUN which jupyter && jupyter-lab --version
@@ -163,7 +162,8 @@ RUN apt-get clean && \
     mamba clean -atfy && \
     rm -rf /tmp/* && \
     rm -rf /home/$USERNAME/.cache
-RUN chown $USERNAME -R /home/$USERNAME
+RUN chown $USERNAME -R /home/$USERNAME && \
+    chown $USERNAME -R /opt/conda/share
 WORKDIR /home/$USERNAME
 USER $USERNAME
 EXPOSE 8888 8787 8080

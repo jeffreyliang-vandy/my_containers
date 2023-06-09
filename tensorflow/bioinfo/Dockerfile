@@ -7,9 +7,9 @@ COPY ./r-packages.R /home/$USERNAME/
 FROM base as base-bioinfo
 RUN conda config --append channels bioconda && \
     echo 'options(BioC_mirror = "https://packagemanager.posit.co/bioconductor")' \
-    > /home/$USERNAME/conda/lib/R/etc/Rprofile.site && \
+    > /opt/conda/lib/R/etc/Rprofile.site && \
     echo 'options(repos = c(REPO_NAME = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"))' \
-    >> /home/$USERNAME/conda/lib/R/etc/Rprofile.site
+    >> /opt/conda/lib/R/etc/Rprofile.site
 
 RUN mamba install -y \
     r-seurat \
@@ -62,7 +62,8 @@ RUN apt-get clean && \
     mamba clean -atfy && \
     rm -rf /tmp/* && \
     rm -rf /home/$USERNAME/.cache
-RUN chown $USERNAME -R /home/$USERNAME
+RUN chown $USERNAME -R /home/$USERNAME && \
+    chown $USERNAME -R /opt/conda/share
 WORKDIR /home/$USERNAME
 USER $USERNAME
 EXPOSE 8080 8787 8888

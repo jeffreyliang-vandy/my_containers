@@ -9,7 +9,6 @@ mamba install -c conda-forge -y \
     jupyter labextension enable jupyterlab-jupytext && \
     jupyter serverextension enable jupytext
 
-ln -s $(which jupyter) /usr/bin/jupyter
 
 echo 'c.NotebookApp.contents_manager_class = "jupytext.TextFileContentsManager"' >> /home/$USERNAME/.jupyter/jupyter_notebook_config.py &&\
     wget "https://raw.githubusercontent.com/mwouts/jupytext/main/binder/labconfig/default_setting_overrides.json" -P  /home/$USERNAME/.jupyter/labconfig/
@@ -30,14 +29,17 @@ apt-get update && \
     rm rstudio*.deb && \
     rm -rf /tmp/* && \
     apt-get clean
-echo "auth-required-user-group=root,app" >> /etc/rstudio/rserver.conf
-echo "export RSTUDIO_WHICH_R=/home/$USERNAME/conda/bin/R" >> /etc/environment
+echo "auth-required-user-group=root,app,$USERNAME" >> /etc/rstudio/rserver.conf
+echo "export RSTUDIO_WHICH_R=/opt/conda/bin/R" >> /etc/environment
 
 ## Install code-server
 mamba install -c conda-forge -y \
     code-server \
     && mamba clean -atfy
-ln -s $(which code-server) /usr/bin/code-server
+mkdir $HOME/.code-server/extensions
+export EXTENSIONS-DIR=$HOME/.vscode/extensions 
+export USER-DATA-DIR=$HOME/.vscode
+echo "export CODE_EXTENSIONSDIR=$HOME/.vscode/extensions" >> /etc/environment
 code-server --install-extension ms-python.python && \
     code-server --install-extension ms-toolsai.jupyter && \
     code-server --install-extension REditorSupport.r && \
