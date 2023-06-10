@@ -31,8 +31,9 @@ CMD ["jupyter-lab","--ip=0.0.0.0","--port=8888","--no-browser","--allow-root","-
 
 
 FROM core as visual
-## Install jupyterlab
-RUN /bin/bash /home/$USERNAME/install_visual.sh
+ENV RSTUDIO_WHICH_R=/opt/conda/bin/R
+ENV SHELL=/bin/bash
+RUN /bin/bash /home/${USERNAME}/install_visual.sh
 
 FROM visual as test-visual
 WORKDIR /home/$USERNAME
@@ -61,10 +62,11 @@ FROM visual as app
 RUN apt-get clean && \
     mamba clean -atfy && \
     rm -rf /tmp/* && \
-    rm -rf /home/$USERNAME/.cache
-RUN chown $USERNAME -R /home/$USERNAME && \
-    chown $USERNAME -R /opt/conda/share
-WORKDIR /home/$USERNAME
-USER $USERNAME
-EXPOSE 8080 8787 8888
+    rm -rf /home/${USERNAME}/.cache
+RUN chmod 777 -R /home/${USERNAME} && \
+    chmod 777 -R /opt/conda
+WORKDIR /home/${USERNAME}
+USER ${USERNAME}
+EXPOSE 8888 8787 8080
 CMD ["jupyter-lab","--ip=0.0.0.0","--port=8888","--no-browser","--allow-root","--NotebookApp.token=''", "--NotebookApp.password=''"]
+

@@ -1,11 +1,11 @@
 FROM ubuntu:22.04 as base
 
-ENV USERNAME=liangz2
+ENV USERNAME=app
 RUN addgroup --system --gid 1001 app \
-    && adduser --system --ingroup app --uid 1001 $USERNAME \
-    && echo "$USERNAME:password" | chpasswd
-ENV HOME=/home/$USERNAME
-WORKDIR /home/$USERNAME
+    && adduser --system --ingroup app --uid 1001 ${USERNAME} \
+    && echo "${USERNAME}:password" | chpasswd
+ENV HOME=/home/${USERNAME}
+WORKDIR /home/${USERNAME}
 ENV TZ="America/New_York"
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -113,7 +113,7 @@ RUN mamba install -c conda-forge -y \
     && mamba clean -afy
 
 FROM base-r-python as test-r-python
-# RUN chown app:app -R /home/$USERNAME
+# RUN chown app:app -R /home/${USERNAME}
 # USER app
 RUN ipython -c "import tensorflow as tf; print(tf.__version__);\
     import pandas as pd;import scipy.stats as stats;import numpy as np;\
@@ -125,22 +125,26 @@ RUN which jupyter && jupyter lab --version
 
 
 FROM base-r-python as core
-COPY ./install_visual.sh /home/$USERNAME/install_visual.sh
+COPY ./install_visual.sh ./install_visual.sh
+COPY ./vscode-binder ./vscode-binder
 COPY ./supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-WORKDIR /home/$USERNAME
+WORKDIR /home/${USERNAME}
 EXPOSE 8888
 CMD ["jupyter-lab","--ip=0.0.0.0","--port=8888","--no-browser","--allow-root","--NotebookApp.token=''", "--NotebookApp.password=''"]
 
 
 FROM core as visual
-RUN /bin/bash /home/$USERNAME/install_visual.sh
+WORKDIR /home/${USERNAME}
+ENV RSTUDIO_WHICH_R=/opt/conda/bin/R
+ENV SHELL=/bin/bash
+RUN /bin/bash ./install_visual.sh
 
 FROM visual as test-visual
-WORKDIR /home/$USERNAME
-COPY ./supervisord_test.conf /etc/supervisor/conf.d/supervisord.conf
+WORKDIR /home/${USERNAME}
 RUN which jupyter && jupyter lab --version
 RUN which rstudio-server && rstudio-server verify-installation
 RUN which code-server && code-server --version
+RUN code-server --list-extensions
 RUN which quarto && quarto check
 EXPOSE 8080 8787 8888
 CMD ["/usr/bin/supervisord"]
@@ -148,12 +152,12 @@ CMD ["/usr/bin/supervisord"]
 
 FROM visual as dev
 USER root
-WORKDIR /home/$USERNAME
+WORKDIR /home/${USERNAME}
 RUN apt-get clean && \
     rm -rf /var/lib/apt/lists/* &&\
     mamba clean -atfy && \
     rm -rf /tmp/* && \
-    rm -rf /home/$USERNAME/.cache
+    rm -rf /home/${USERNAME}/.cache
 EXPOSE 8080 8787 8888
 CMD ["/usr/bin/supervisord"]
 
@@ -161,11 +165,11 @@ FROM visual as app
 RUN apt-get clean && \
     mamba clean -atfy && \
     rm -rf /tmp/* && \
-    rm -rf /home/$USERNAME/.cache
-RUN chown $USERNAME -R /home/$USERNAME && \
-    chown $USERNAME -R /opt/conda/share
-WORKDIR /home/$USERNAME
-USER $USERNAME
+    rm -rf /home/${USERNAME}/.cache
+RUN chmod 777 -R /home/${USERNAME} && \
+    chmod 777 -R /opt/conda
+WORKDIR /home/${USERNAME}
+USER ${USERNAME}
 EXPOSE 8888 8787 8080
 CMD ["jupyter-lab","--ip=0.0.0.0","--port=8888","--no-browser","--allow-root","--NotebookApp.token=''", "--NotebookApp.password=''"]
 

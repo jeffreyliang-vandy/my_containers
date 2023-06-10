@@ -11,13 +11,17 @@ def setup_vscode():
         # Start vscode in CODE_WORKINGDIR env variable if set
         # If not, start in 'current directory', which is $REPO_DIR in mybinder
         # but /home/jovyan (or equivalent) in JupyterHubs
+        home_dir = os.getenv("HOME",".")
+
         working_dir = os.getenv("CODE_WORKINGDIR", ".")
 
-        user_data_dir = os.getenv("CODE_USERDATADIR", "$HOME/.vscode-server")
+        user_data_dir = os.getenv("CODE_USERDATADIR", home_dir+"/.vscode-server")
 
-        extensions_dir = os.getenv("CODE_EXTENSIONSDIR", "$HOME/.vscode-server/extensions")
+        extensions_dir = os.getenv("CODE_EXTENSIONSDIR", None)
         cmd = [
             executable,
+            "--user-data-dir",
+            user_data_dir,
             "--auth",
             "none",
             "--disable-telemetry",
@@ -27,8 +31,7 @@ def setup_vscode():
         if extensions_dir:
             cmd += ["--extensions-dir", extensions_dir]
 
-        if user_data_dir:
-            cmd += ["--user-data-dir", user_data_dir]
+
 
         cmd.append(working_dir)
         return cmd
